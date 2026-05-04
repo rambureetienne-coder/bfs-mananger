@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@prisma/adapter-neon": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "date-fns": "^4.1.0",
     "gantt-task-react": "^0.3.9",
     "lucide-react": "^1.14.0",

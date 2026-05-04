@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 export type ActivityStatus = "DONE" | "PENDING" | "COMPLETED" | "ADDED" | "IN_PROGRESS" | "REVIEW" | "REMOVED" | "UPDATED";
 
@@ -14,6 +14,7 @@ export interface Activity {
 
 interface ActivityContextType {
   activities: Activity[];
+  loading: boolean;
   addActivity: (activity: Omit<Activity, "id" | "time">) => void;
 }
 
@@ -21,38 +22,55 @@ const ActivityContext = createContext<ActivityContextType | undefined>(undefined
 
 export function ActivityProvider({ children }: { children: React.ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("fs_activities");
-    if (saved) {
-      try { setActivities(JSON.parse(saved)); } catch (e) {}
-    } else {
-      setActivities([
-        { id: "1", user: "Etienne", action: "a terminé la tâche", target: "Chassis Torsional Testing", status: "DONE", time: new Date(Date.now() - 2 * 3600000).toISOString() },
-        { id: "2", user: "Sarah", action: "a soumis une demande d'achat pour", target: "Ohlins TTX25 MkII Dampers", status: "PENDING", time: new Date(Date.now() - 4 * 3600000).toISOString() },
-      ]);
+  const fetchActivities = useCallback(async () => {
+    try {
+      const res = await fetch("/api/activities");
+      if (res.ok) {
+        const data = await res.json();
+        setActivities(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch activities:", error);
+    } finally {
+      setLoading(false);
     }
-    setIsHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (isHydrated) {
-      localStorage.setItem("fs_activities", JSON.stringify(activities));
-    }
-  }, [activities, isHydrated]);
+    fetchActivities();
+  }, [fetchActivities]);
 
-  const addActivity = (activity: Omit<Activity, "id" | "time">) => {
-    const newActivity = {
+  const addActivity = async (activity: Omit<Activity, "id" | "time">) => {
+    // Optimistic update
+    const optimistic: Activity = {
       ...activity,
       id: Math.random().toString(36).substring(7),
       time: new Date().toISOString(),
     };
-    setActivities(prev => [newActivity, ...prev].slice(0, 50));
+    setActivities((prev) => [optimistic, ...prev].slice(0, 50));
+
+    try {
+      const res = await fetch("/api/activities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(activity),
+      });
+      if (res.ok) {
+        const newActivity = await res.json();
+        // Replace optimistic entry with server entry
+        setActivities((prev) =>
+          prev.map((a) => (a.id === optimistic.id ? newActivity : a))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to add activity:", error);
+    }
   };
 
   return (
-    <ActivityContext.Provider value={{ activities, addActivity }}>
+    <ActivityContext.Provider value={{ activities, loading, addActivity }}>
       {children}
     </ActivityContext.Provider>
   );

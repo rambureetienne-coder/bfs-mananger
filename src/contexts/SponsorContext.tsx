@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 export type SponsorStatus = "Prospection" | "Premier contact" | "En négociation" | "Confirmé" | "Perdu";
 
@@ -18,91 +18,78 @@ export interface Sponsor {
 
 interface SponsorContextType {
   sponsors: Sponsor[];
+  loading: boolean;
   addSponsor: (sponsor: Omit<Sponsor, "id">) => void;
   updateSponsor: (sponsor: Sponsor) => void;
   deleteSponsor: (id: string) => void;
 }
 
-const mockSponsors: Sponsor[] = [
-  {
-    id: "s1",
-    company: "Dassault Systèmes",
-    contactName: "Jean Dupont",
-    contactEmail: "jean.dupont@3ds.com",
-    contactPhone: "+33 1 23 45 67 89",
-    status: "Confirmé",
-    amount: 5000,
-    lastContactDate: new Date().toISOString().split('T')[0],
-    comments: "Licences SolidWorks pour 20 membres + logo sur nez de la voiture.",
-  },
-  {
-    id: "s2",
-    company: "Michelin",
-    contactName: "Claire Martin",
-    contactEmail: "claire.martin@michelin.com",
-    contactPhone: "+33 4 73 32 20 00",
-    status: "En négociation",
-    amount: 1500,
-    lastContactDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    comments: "Négociation pour 3 sets de pneus slick. En attente de validation du budget marketing.",
-  },
-  {
-    id: "s3",
-    company: "Red Bull",
-    contactName: "Paul Atreides",
-    contactEmail: "sponsoring@redbull.fr",
-    contactPhone: "",
-    status: "Prospection",
-    amount: 0,
-    lastContactDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    comments: "Email envoyé, pas encore de réponse.",
-  }
-];
-
 const SponsorContext = createContext<SponsorContextType | undefined>(undefined);
 
 export function SponsorProvider({ children }: { children: React.ReactNode }) {
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("fs_sponsors");
-    if (saved) {
-      try {
-        setSponsors(JSON.parse(saved));
-      } catch (e) {
-        setSponsors(mockSponsors);
+  const fetchSponsors = useCallback(async () => {
+    try {
+      const res = await fetch("/api/sponsors");
+      if (res.ok) {
+        const data = await res.json();
+        setSponsors(data);
       }
-    } else {
-      setSponsors(mockSponsors);
+    } catch (error) {
+      console.error("Failed to fetch sponsors:", error);
+    } finally {
+      setLoading(false);
     }
-    setIsHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (isHydrated) {
-      localStorage.setItem("fs_sponsors", JSON.stringify(sponsors));
+    fetchSponsors();
+  }, [fetchSponsors]);
+
+  const addSponsor = async (sponsorData: Omit<Sponsor, "id">) => {
+    try {
+      const res = await fetch("/api/sponsors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sponsorData),
+      });
+      if (res.ok) {
+        const newSponsor = await res.json();
+        setSponsors((prev) => [...prev, newSponsor]);
+      }
+    } catch (error) {
+      console.error("Failed to add sponsor:", error);
     }
-  }, [sponsors, isHydrated]);
-
-  const addSponsor = (sponsorData: Omit<Sponsor, "id">) => {
-    const newSponsor: Sponsor = {
-      ...sponsorData,
-      id: Math.random().toString(36).substring(7),
-    };
-    setSponsors([...sponsors, newSponsor]);
   };
 
-  const updateSponsor = (updatedSponsor: Sponsor) => {
-    setSponsors(sponsors.map((s) => (s.id === updatedSponsor.id ? updatedSponsor : s)));
+  const updateSponsor = async (updatedSponsor: Sponsor) => {
+    setSponsors((prev) => prev.map((s) => (s.id === updatedSponsor.id ? updatedSponsor : s)));
+    try {
+      await fetch("/api/sponsors", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedSponsor),
+      });
+    } catch (error) {
+      console.error("Failed to update sponsor:", error);
+      fetchSponsors();
+    }
   };
 
-  const deleteSponsor = (id: string) => {
-    setSponsors(sponsors.filter((s) => s.id !== id));
+  const deleteSponsor = async (id: string) => {
+    setSponsors((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await fetch(`/api/sponsors?id=${id}`, { method: "DELETE" });
+    } catch (error) {
+      console.error("Failed to delete sponsor:", error);
+      fetchSponsors();
+    }
   };
 
   return (
-    <SponsorContext.Provider value={{ sponsors, addSponsor, updateSponsor, deleteSponsor }}>
+    <SponsorContext.Provider value={{ sponsors, loading, addSponsor, updateSponsor, deleteSponsor }}>
       {children}
     </SponsorContext.Provider>
   );

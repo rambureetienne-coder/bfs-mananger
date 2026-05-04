@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { addDays, subDays } from "date-fns";
 
 export type Department = "Mechanical" | "Electrical" | "Lead Operations";
@@ -36,6 +36,7 @@ export interface Task {
 
 interface TaskContextType {
   tasks: Task[];
+  loading: boolean;
   addTask: (task: Omit<Task, "id" | "type">) => void;
   updateTask: (task: Task) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
@@ -43,139 +44,144 @@ interface TaskContextType {
   addMilestone: (name: string, date: Date, department: Department) => void;
 }
 
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    name: "Chassis Design",
-    start: subDays(new Date(), 10),
-    end: addDays(new Date(), 5),
-    progress: 80,
-    type: "task",
-    department: "Mechanical",
-    status: "IN_PROGRESS",
-    assignedTo: "Etienne",
-    styles: { progressColor: "#3b82f6", progressSelectedColor: "#2563eb" },
-  },
-  {
-    id: "2",
-    name: "Aerodynamics Sim",
-    start: subDays(new Date(), 5),
-    end: addDays(new Date(), 10),
-    progress: 40,
-    type: "task",
-    department: "Mechanical",
-    status: "IN_PROGRESS",
-    assignedTo: "Sarah",
-    dependencies: ["1"],
-    styles: { progressColor: "#10b981", progressSelectedColor: "#059669" },
-  },
-  {
-    id: "3",
-    name: "Battery Pack Assembly",
-    start: addDays(new Date(), 2),
-    end: addDays(new Date(), 14),
-    progress: 0,
-    type: "task",
-    department: "Electrical",
-    status: "TODO",
-    assignedTo: "Alex",
-    styles: { progressColor: "#eab308", progressSelectedColor: "#ca8a04" },
-  },
-  {
-    id: "4",
-    name: "Budget Review",
-    start: subDays(new Date(), 2),
-    end: addDays(new Date(), 2),
-    progress: 100,
-    type: "task",
-    department: "Lead Operations",
-    status: "DONE",
-    assignedTo: "Admin",
-    styles: { progressColor: "#a855f7", progressSelectedColor: "#9333ea" },
-  },
-];
+const STYLE_MAP: Record<string, { progressColor: string; progressSelectedColor: string }> = {
+  Mechanical: { progressColor: "#3b82f6", progressSelectedColor: "#2563eb" },
+  Electrical: { progressColor: "#eab308", progressSelectedColor: "#ca8a04" },
+  "Lead Operations": { progressColor: "#a855f7", progressSelectedColor: "#9333ea" },
+};
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Hydrate on mount from localStorage or use mockTasks
-  useEffect(() => {
-    const saved = localStorage.getItem("fs_tasks");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved).map((t: any) => ({
+  // Fetch tasks from API on mount
+  const fetchTasks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tasks");
+      if (res.ok) {
+        const data = await res.json();
+        const parsed: Task[] = data.map((t: any) => ({
           ...t,
           start: new Date(t.start),
-          end: new Date(t.end)
+          end: new Date(t.end),
+          styles: STYLE_MAP[t.department] || STYLE_MAP["Mechanical"],
         }));
         setTasks(parsed);
-      } catch (e) {
-        setTasks(mockTasks);
       }
-    } else {
-      setTasks(mockTasks);
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+    } finally {
+      setLoading(false);
     }
-    setIsHydrated(true);
   }, []);
 
-  // Save to localStorage whenever tasks change
   useEffect(() => {
-    if (isHydrated) {
-      localStorage.setItem("fs_tasks", JSON.stringify(tasks));
-    }
-  }, [tasks, isHydrated]);
+    fetchTasks();
+  }, [fetchTasks]);
 
-  const addTask = (taskData: Omit<Task, "id" | "type">) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Math.random().toString(36).substring(7),
-      type: "task",
-      styles: { progressColor: "#3b82f6", progressSelectedColor: "#2563eb" },
-    };
-    setTasks([...tasks, newTask]);
-  };
-
-  const updateTask = (updatedTask: Task) => {
-    setTasks(tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
-  };
-
-  const updateTaskStatus = (id: string, status: TaskStatus) => {
-    setTasks(tasks.map((t) => {
-      if (t.id === id) {
-        let progress = t.progress;
-        if (status === "DONE") progress = 100;
-        if (status === "TODO") progress = 0;
-        return { ...t, status, progress };
+  const addTask = async (taskData: Omit<Task, "id" | "type">) => {
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...taskData,
+          start: taskData.start.toISOString(),
+          end: taskData.end.toISOString(),
+          type: "task",
+        }),
+      });
+      if (res.ok) {
+        const newTask = await res.json();
+        const parsed: Task = {
+          ...newTask,
+          start: new Date(newTask.start),
+          end: new Date(newTask.end),
+          styles: STYLE_MAP[newTask.department] || STYLE_MAP["Mechanical"],
+        };
+        setTasks((prev) => [...prev, parsed]);
       }
-      return t;
-    }));
+    } catch (error) {
+      console.error("Failed to add task:", error);
+    }
   };
 
-  const addMilestone = (name: string, date: Date, department: Department) => {
-    const newMilestone: Task = {
-      id: Math.random().toString(36).substring(7),
-      name,
-      start: date,
-      end: date,
-      progress: 100,
-      type: "milestone",
-      department,
-      status: "DONE",
-      assignedTo: "System",
-      styles: { progressColor: "#ef4444", progressSelectedColor: "#b91c1c" }
-    };
-    setTasks([...tasks, newMilestone]);
+  const updateTask = async (updatedTask: Task) => {
+    // Optimistic update
+    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    try {
+      await fetch("/api/tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...updatedTask,
+          start: updatedTask.start.toISOString(),
+          end: updatedTask.end.toISOString(),
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to update task:", error);
+      // Revert on error
+      fetchTasks();
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter((t) => t.id !== id));
+  const updateTaskStatus = async (id: string, status: TaskStatus) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    let progress = task.progress;
+    if (status === "DONE") progress = 100;
+    if (status === "TODO") progress = 0;
+    const updated = { ...task, status, progress };
+    await updateTask(updated);
+  };
+
+  const deleteTask = async (id: string) => {
+    // Optimistic update
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    try {
+      await fetch(`/api/tasks?id=${id}`, { method: "DELETE" });
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      fetchTasks();
+    }
+  };
+
+  const addMilestone = async (name: string, date: Date, department: Department) => {
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          start: date.toISOString(),
+          end: date.toISOString(),
+          progress: 100,
+          type: "milestone",
+          department,
+          status: "DONE",
+          assignedTo: "System",
+        }),
+      });
+      if (res.ok) {
+        const newTask = await res.json();
+        const parsed: Task = {
+          ...newTask,
+          start: new Date(newTask.start),
+          end: new Date(newTask.end),
+          styles: { progressColor: "#ef4444", progressSelectedColor: "#b91c1c" },
+        };
+        setTasks((prev) => [...prev, parsed]);
+      }
+    } catch (error) {
+      console.error("Failed to add milestone:", error);
+    }
   };
 
   return (
-    <TaskContext.Provider value={{ tasks, addTask, updateTask, updateTaskStatus, deleteTask, addMilestone }}>
+    <TaskContext.Provider value={{ tasks, loading, addTask, updateTask, updateTaskStatus, deleteTask, addMilestone }}>
       {children}
     </TaskContext.Provider>
   );

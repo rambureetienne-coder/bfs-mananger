@@ -7,11 +7,12 @@ datasource db {
 }
 
 model User {
-  id    String @id @default(cuid())
-  name  String
-  email String @unique
-  role  String
-  tasks Task[] @relation("TaskAssignee")
+  id         String @id @default(cuid())
+  name       String
+  email      String @unique
+  role       String
+  department String @default("Lead Operations")
+  tasks      Task[] @relation("TaskAssignee")
 }
 
 model Task {
@@ -25,6 +26,7 @@ model Task {
   status       String   @default("TODO")
   assignedToId String?
   assignedTo   User?    @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  assignedToName String?
   priority     String?
   comments     String?
   fileLink     String?
@@ -38,7 +40,9 @@ model Part {
   id           String   @id @default(cuid())
   name         String
   department   String
-  mass         Float
+  material     String   @default("")
+  manufacturer String   @default("")
+  weight       Float
   cost         Float
   quantity     Int
   status       String
@@ -53,10 +57,11 @@ model Sponsor {
   company      String
   contactName  String
   contactEmail String
-  contactPhone String?
+  contactPhone String   @default("")
   status       String
   amount       Float
-  notes        String?
+  lastContactDate String?
+  comments     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
