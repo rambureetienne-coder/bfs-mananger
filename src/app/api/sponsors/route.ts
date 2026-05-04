@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Sponsor } from "@prisma/client";
 
 // GET all sponsors
 export async function GET() {
   try {
-    const sponsors = await prisma.sponsor.findMany({
+    const sponsors: Sponsor[] = await prisma.sponsor.findMany({
       orderBy: { createdAt: "asc" },
     });
-    const mapped = sponsors.map((s) => ({
+    const mapped = sponsors.map((s: Sponsor) => ({
       id: s.id,
       company: s.company,
       contactName: s.contactName,
@@ -29,7 +30,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const sponsor = await prisma.sponsor.create({
+    const sponsor: Sponsor = await prisma.sponsor.create({
       data: {
         company: body.company,
         contactName: body.contactName,
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const sponsor = await prisma.sponsor.update({
+    const sponsor: Sponsor = await prisma.sponsor.update({
       where: { id: body.id },
       data: {
         company: body.company,

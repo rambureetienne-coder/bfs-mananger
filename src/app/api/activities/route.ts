@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Activity } from "@prisma/client";
 
 // GET all activities (latest 50)
 export async function GET() {
   try {
-    const activities = await prisma.activity.findMany({
+    const activities: Activity[] = await prisma.activity.findMany({
       orderBy: { time: "desc" },
       take: 50,
     });
-    const mapped = activities.map((a) => ({
+    const mapped = activities.map((a: Activity) => ({
       id: a.id,
       user: a.user,
       action: a.action,
@@ -27,7 +28,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const activity = await prisma.activity.create({
+    const activity: Activity = await prisma.activity.create({
       data: {
         user: body.user,
         action: body.action,

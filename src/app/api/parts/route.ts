@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Part } from "@prisma/client";
 
 // GET all parts
 export async function GET() {
   try {
-    const parts = await prisma.part.findMany({
+    const parts: Part[] = await prisma.part.findMany({
       orderBy: { createdAt: "asc" },
     });
-    const mapped = parts.map((p) => ({
+    const mapped = parts.map((p: Part) => ({
       id: p.id,
       name: p.name,
       department: p.department,
@@ -30,7 +31,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const part = await prisma.part.create({
+    const part: Part = await prisma.part.create({
       data: {
         name: body.name,
         department: body.department,
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const part = await prisma.part.update({
+    const part: Part = await prisma.part.update({
       where: { id: body.id },
       data: {
         name: body.name,
