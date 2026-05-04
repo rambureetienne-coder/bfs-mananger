@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { Task } from "@prisma/client";
 
 // GET all tasks
 export async function GET() {
   try {
-    const tasks: Task[] = await prisma.task.findMany({
+    const tasks = await prisma.task.findMany({
       orderBy: { createdAt: "asc" },
     });
-    const mapped = tasks.map((t: Task) => ({
+    const mapped = tasks.map((t: any) => ({
       id: t.id,
       name: t.name,
       start: t.start.toISOString(),
@@ -33,7 +32,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const task: Task = await prisma.task.create({
+    const task: any = await prisma.task.create({
       data: {
         name: body.name,
         start: new Date(body.start),
@@ -73,7 +72,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const task: Task = await prisma.task.update({
+    const task: any = await prisma.task.update({
       where: { id: body.id },
       data: {
         name: body.name,

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { Activity } from "@prisma/client";
 
 // GET all activities (latest 50)
 export async function GET() {
   try {
-    const activities: Activity[] = await prisma.activity.findMany({
+    const activities = await prisma.activity.findMany({
       orderBy: { time: "desc" },
       take: 50,
     });
-    const mapped = activities.map((a: Activity) => ({
+    const mapped = activities.map((a: any) => ({
       id: a.id,
       user: a.user,
       action: a.action,
@@ -28,7 +27,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const activity: Activity = await prisma.activity.create({
+    const activity = await prisma.activity.create({
       data: {
         user: body.user,
         action: body.action,
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
       action: activity.action,
       target: activity.target,
       status: activity.status,
-      time: activity.time.toISOString(),
+      time: (activity as any).time.toISOString(),
     };
     return NextResponse.json(mapped, { status: 201 });
   } catch (error) {
