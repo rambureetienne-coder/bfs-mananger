@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+  role  String
+  tasks Task[] @relation("TaskAssignee")
+}
+
+model Task {
+  id           String   @id @default(cuid())
+  name         String
+  start        DateTime
+  end          DateTime
+  progress     Int      @default(0)
+  type         String   @default("task")
+  department   String
+  status       String   @default("TODO")
+  assignedToId String?
+  assignedTo   User?    @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  priority     String?
+  comments     String?
+  fileLink     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  bomParts     Part[]   @relation("TaskParts")
+}
+
+model Part {
+  id           String   @id @default(cuid())
+  name         String
+  department   String
+  mass         Float
+  cost         Float
+  quantity     Int
+  status       String
+  linkedTaskId String?
+  linkedTask   Task?    @relation("TaskParts", fields: [linkedTaskId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Sponsor {
+  id           String   @id @default(cuid())
+  company      String
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  status       String
+  amount       Float
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PurchaseRequest {
+  id        String   @id @default(cuid())
+  item      String
+  link      String
+  price     Float
+  status    String   @default("En attente")
+  requester String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TestLog {
+  id        String   @id @default(cuid())
+  date      DateTime
+  location  String
+  driver    String
+  goals     String
+  feedback  String
+  createdAt DateTime @default(now())
+}
+
+model ScrutineeringItem {
+  id       String  @id @default(cuid())
+  category String
+  label    String
+  checked  Boolean @default(false)
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  user      String
+  action    String
+  target    String
+  status    String
+  time      DateTime @default(now())
+}

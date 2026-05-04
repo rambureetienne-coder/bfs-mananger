@@ -1,0 +1,31 @@
+{
+  "name": "gestion-de-projet-fs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "gantt-task-react": "^0.3.9",
+    "lucide-react": "^1.14.0",
+    "next": "^16.2.4",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@prisma/config": "^7.8.0",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "dotenv": "^17.4.2",
+    "eslint": "^8",
+    "eslint-config-next": "^16.2.4",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
