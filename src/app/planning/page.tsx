@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Gantt, ViewMode } from "gantt-task-react";
+import { Gantt, ViewMode, Task as GanttTask } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import { useTasks, Department, TaskStatus, Task, TaskPriority } from "@/contexts/TaskContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,16 +31,17 @@ export default function PlanningPage() {
     departmentFilter === "All" ? true : t.department === departmentFilter
   );
 
-  const handleTaskChange = (task: Task) => {
-    updateTask(task);
+  const handleTaskChange = (task: GanttTask) => {
+    updateTask(task as Task);
   };
 
-  const handleTaskProgressChange = (task: Task) => {
-    updateTask(task);
+  const handleTaskProgressChange = (task: GanttTask) => {
+    updateTask(task as Task);
   };
 
-  const handleDblClick = (task: Task) => {
-    alert(`Task: ${task.name}\nAssigned To: ${task.assignedTo}\nDepartment: ${task.department}`);
+  const handleDblClick = (task: GanttTask) => {
+    const t = task as Task;
+    alert(`Task: ${t.name}\nAssigned To: ${t.assignedTo}\nDepartment: ${t.department}`);
   };
 
   const handleAddMilestoneSubmit = (e: React.FormEvent) => {
