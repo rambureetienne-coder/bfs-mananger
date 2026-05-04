@@ -38,7 +38,7 @@ export default function Dashboard() {
   const completedTasks = tasks.filter(t => t.status === "DONE").length;
   const completionPercentage = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
-  const totalMass = parts.reduce((acc, part) => acc + (part.mass * part.quantity), 0);
+  const totalMass = parts.reduce((acc, part) => acc + (part.weight * part.quantity), 0);
   const totalBOMCost = parts.reduce((acc, part) => acc + (part.cost * part.quantity), 0);
   
   const currentSeason = "FS Season 2026"
